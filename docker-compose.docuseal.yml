@@ -1,0 +1,46 @@
+version: "3"
+
+services:
+  docuseal-app:
+    image: docuseal/docuseal:latest
+    container_name: docuseal-app
+    restart: always
+    depends_on:
+      docuseal-db:
+        condition: service_healthy
+    environment:
+      # Configurações para o Nginx-Proxy e SSL
+      - VIRTUAL_HOST=aceite-aprova.duckdns.org
+      - VIRTUAL_PORT=3000
+      - LETSENCRYPT_HOST=aceite-aprova.duckdns.org
+      - LETSENCRYPT_EMAIL=amdrelmes@gmail.com
+      # Configurações Internas DocuSeal
+      - FORCE_SSL=true
+      - DATABASE_URL=postgresql://docuseal_user:docuseal_pass@docuseal-db:5432/docuseal_db
+    volumes:
+      - ./docuseal_data:/data/docuseal
+    networks:
+      - ticketz-proxy
+
+  docuseal-db:
+    image: postgres:15-alpine
+    container_name: docuseal-db
+    restart: always
+    environment:
+      POSTGRES_USER: docuseal_user
+      POSTGRES_PASSWORD: docuseal_pass
+      POSTGRES_DB: docuseal_db
+    volumes:
+      - ./docuseal_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docuseal_user -d docuseal_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ticketz-proxy
+
+networks:
+  ticketz-proxy:
+    external:
+      name: ticketz-docker-acme_nginx-proxy
